@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import Base, engine, get_db
 from app.models import AggregationJob, JobStatus
-from app.schemas import JobCreate, JobResponse, JobStatusResponse, VALID_SOURCES
+from app.schemas import JobCreate, JobResponse, VALID_SOURCES
 from workers.tasks import run_aggregation_pipeline
 
 # Create database tables
