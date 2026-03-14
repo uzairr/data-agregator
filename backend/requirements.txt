@@ -1,0 +1,19 @@
+# Web framework
+fastapi==0.111.0
+uvicorn==0.30.1
+
+# Task queue
+celery==5.4.0
+redis==5.0.7
+
+# Database
+sqlalchemy==2.0.31
+
+# AWS & HTTP
+boto3==1.34.144
+httpx==0.27.0
+
+# Config & migrations
+python-dotenv==1.0.1
+pydantic-settings==2.3.4
+alembic==1.13.2

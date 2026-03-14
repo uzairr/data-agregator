@@ -1,0 +1,274 @@
+/* Base: dark theme */
+.app {
+  background-color: #0f172a;
+  color: #e2e8f0;
+  min-height: 100vh;
+  padding: 2rem;
+}
+
+.app-header h1 {
+  margin: 0 0 1.5rem 0;
+  font-size: 1.75rem;
+}
+
+/* Cards */
+.card {
+  background-color: #1e293b;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.card h2 {
+  margin: 0 0 1rem 0;
+  font-size: 1.25rem;
+}
+
+/* Form */
+.job-form .form-group {
+  margin-bottom: 1rem;
+}
+
+.job-form label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 0.875rem;
+  color: #94a3b8;
+}
+
+.job-form input[type="text"] {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  background-color: #0f172a;
+  color: #e2e8f0;
+}
+
+.form-row {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.form-row .form-group {
+  flex: 1;
+  min-width: 140px;
+}
+
+.checkbox-row {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  color: inherit;
+}
+
+.checkbox-label input {
+  margin: 0;
+}
+
+.job-form button[type="submit"] {
+  margin-top: 0.5rem;
+  padding: 0.5rem 1rem;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.job-form button[type="submit"]:hover:not(:disabled) {
+  background-color: #2563eb;
+}
+
+.job-form button[type="submit"]:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Table */
+.jobs-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.jobs-table th,
+.jobs-table td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #334155;
+}
+
+.jobs-table th {
+  color: #94a3b8;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.mono {
+  font-family: ui-monospace, "Cascadia Code", "Source Code Pro", monospace;
+  font-size: 0.875rem;
+}
+
+/* Status badges */
+.status-badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.status-pending {
+  background-color: #f59e0b33;
+  color: #fbbf24;
+}
+
+.status-processing {
+  background-color: #3b82f633;
+  color: #60a5fa;
+}
+
+.status-completed {
+  background-color: #22c55e33;
+  color: #4ade80;
+}
+
+.status-failed {
+  background-color: #ef444433;
+  color: #f87171;
+}
+
+/* Buttons */
+.btn-sm {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  background-color: #334155;
+  color: #e2e8f0;
+  border: 1px solid #475569;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-sm:hover:not(:disabled) {
+  background-color: #475569;
+}
+
+.btn-sm:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Spinner */
+.spinner {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid #334155;
+  border-top-color: #60a5fa;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Result section */
+.result-section .result-header {
+  margin: 0 0 0.75rem 0;
+  font-size: 1rem;
+  color: #94a3b8;
+}
+
+.result-block {
+  margin-bottom: 1.5rem;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 1rem;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.stat-value {
+  font-size: 1rem;
+}
+
+.article-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.article-list li {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #334155;
+}
+
+.article-list li:last-child {
+  border-bottom: none;
+}
+
+.article-list a {
+  color: #60a5fa;
+}
+
+.article-list a:hover {
+  text-decoration: underline;
+}
+
+.article-source {
+  display: block;
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 0.25rem;
+}
+
+.result-errors {
+  color: #f87171;
+  font-size: 0.875rem;
+  margin: 0.5rem 0;
+}
+
+/* Raw JSON */
+.raw-json {
+  margin-top: 1rem;
+}
+
+.raw-json summary {
+  cursor: pointer;
+  color: #94a3b8;
+  font-size: 0.875rem;
+}
+
+.raw-json pre {
+  margin-top: 0.5rem;
+  padding: 1rem;
+  background-color: #0f172a;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  overflow-x: auto;
+  max-height: 300px;
+  overflow-y: auto;
+}
