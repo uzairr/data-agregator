@@ -3,6 +3,7 @@
 import json
 import uuid
 import re
+import os
 
 import boto3
 from botocore.exceptions import ClientError
