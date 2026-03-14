@@ -159,7 +159,7 @@ def aggregate_results(
             db.commit()
             return
 
-        payload = {"job_id": job_id, "results": merged, "errors": errors if errors else None}
+        # payload = {"job_id": job_id, "results": merged, "errors": errors if errors else None}
 
         # try:
         #     result_url = _upload_to_s3(job_id, payload)
