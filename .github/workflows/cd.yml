@@ -7,8 +7,17 @@ on:
 env:
   AWS_REGION: ${{ secrets.AWS_REGION }}
   AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+
+  # ECR repositories (same as task definition families for backend & frontend)
   ECR_BACKEND_REPOSITORY: data-aggregator-backend
   ECR_FRONTEND_REPOSITORY: data-aggregator-frontend
+
+  # Task definition families (used in describe/register)
+  TASK_DEF_BACKEND: data-aggregator-backend
+  TASK_DEF_FRONTEND: data-aggregator-frontend
+  TASK_DEF_WORKER: data-aggregator-worker   # <-- FIXED: use family name, not service name
+
+  # ECS cluster and service names (from your AWS account)
   ECS_CLUSTER: data-aggregator-cluster
   ECS_BACKEND_SERVICE: data-aggregator-backend-service-f42h7aub
   ECS_FRONTEND_SERVICE: data-aggregator-frontend-service-i8jp8n03
@@ -46,13 +55,14 @@ jobs:
           docker tag ${{ env.ECR_FRONTEND_REPOSITORY }}:${{ github.sha }} ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_FRONTEND_REPOSITORY }}:${{ github.sha }}
           docker push ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_FRONTEND_REPOSITORY }}:${{ github.sha }}
 
+      # ------------------- Backend task definition update -------------------
       - name: Update backend task definition with new image
         id: backend-task
         run: |
-          TASK_DEF=$(aws ecs describe-task-definition --task-definition ${{ env.ECR_BACKEND_REPOSITORY }} --query 'taskDefinition' --output json)
+          TASK_DEF=$(aws ecs describe-task-definition --task-definition ${{ env.TASK_DEF_BACKEND }} --query 'taskDefinition' --output json)
           NEW_CONTAINER_DEF=$(echo "$TASK_DEF" | jq --arg NEW_IMAGE "${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_BACKEND_REPOSITORY }}:${{ github.sha }}" '.containerDefinitions[0].image = $NEW_IMAGE | .containerDefinitions')
           NEW_TASK_DEF_ARN=$(aws ecs register-task-definition \
-            --family ${{ env.ECR_BACKEND_REPOSITORY }} \
+            --family ${{ env.TASK_DEF_BACKEND }} \
             --container-definitions "$NEW_CONTAINER_DEF" \
             --task-role-arn "$(echo $TASK_DEF | jq -r '.taskRoleArn')" \
             --execution-role-arn "$(echo $TASK_DEF | jq -r '.executionRoleArn')" \
@@ -63,13 +73,14 @@ jobs:
             --query 'taskDefinition.taskDefinitionArn' --output text)
           echo "NEW_TASK_DEF_ARN=$NEW_TASK_DEF_ARN" >> $GITHUB_OUTPUT
 
+      # ------------------- Frontend task definition update -------------------
       - name: Update frontend task definition with new image
         id: frontend-task
         run: |
-          TASK_DEF=$(aws ecs describe-task-definition --task-definition ${{ env.ECR_FRONTEND_REPOSITORY }} --query 'taskDefinition' --output json)
+          TASK_DEF=$(aws ecs describe-task-definition --task-definition ${{ env.TASK_DEF_FRONTEND }} --query 'taskDefinition' --output json)
           NEW_CONTAINER_DEF=$(echo "$TASK_DEF" | jq --arg NEW_IMAGE "${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_FRONTEND_REPOSITORY }}:${{ github.sha }}" '.containerDefinitions[0].image = $NEW_IMAGE | .containerDefinitions')
           NEW_TASK_DEF_ARN=$(aws ecs register-task-definition \
-            --family ${{ env.ECR_FRONTEND_REPOSITORY }} \
+            --family ${{ env.TASK_DEF_FRONTEND }} \
             --container-definitions "$NEW_CONTAINER_DEF" \
             --task-role-arn "$(echo $TASK_DEF | jq -r '.taskRoleArn')" \
             --execution-role-arn "$(echo $TASK_DEF | jq -r '.executionRoleArn')" \
@@ -80,13 +91,14 @@ jobs:
             --query 'taskDefinition.taskDefinitionArn' --output text)
           echo "NEW_TASK_DEF_ARN=$NEW_TASK_DEF_ARN" >> $GITHUB_OUTPUT
 
+      # ------------------- Worker task definition update -------------------
       - name: Update worker task definition with new image
         id: worker-task
         run: |
-          TASK_DEF=$(aws ecs describe-task-definition --task-definition ${{ env.ECS_WORKER_SERVICE }} --query 'taskDefinition' --output json)
+          TASK_DEF=$(aws ecs describe-task-definition --task-definition ${{ env.TASK_DEF_WORKER }} --query 'taskDefinition' --output json)
           NEW_CONTAINER_DEF=$(echo "$TASK_DEF" | jq --arg NEW_IMAGE "${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_BACKEND_REPOSITORY }}:${{ github.sha }}" '.containerDefinitions[0].image = $NEW_IMAGE | .containerDefinitions')
           NEW_TASK_DEF_ARN=$(aws ecs register-task-definition \
-            --family ${{ env.ECS_WORKER_SERVICE }} \
+            --family ${{ env.TASK_DEF_WORKER }} \
             --container-definitions "$NEW_CONTAINER_DEF" \
             --task-role-arn "$(echo $TASK_DEF | jq -r '.taskRoleArn')" \
             --execution-role-arn "$(echo $TASK_DEF | jq -r '.executionRoleArn')" \
@@ -97,6 +109,7 @@ jobs:
             --query 'taskDefinition.taskDefinitionArn' --output text)
           echo "NEW_TASK_DEF_ARN=$NEW_TASK_DEF_ARN" >> $GITHUB_OUTPUT
 
+      # ------------------- Run database migrations -------------------
       - name: Run database migrations
         run: |
           aws ecs run-task \
@@ -108,7 +121,8 @@ jobs:
             --overrides '{"containerOverrides":[{"name":"backend","command":["alembic","upgrade","head"]}]}' \
             --started-by "CD-migration"
 
-      - name: Update backend servic
+      # ------------------- Update services -------------------
+      - name: Update backend service
         run: |
           aws ecs update-service \
             --cluster ${{ env.ECS_CLUSTER }} \
