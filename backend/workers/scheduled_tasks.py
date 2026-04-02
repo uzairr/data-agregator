@@ -1,14 +1,14 @@
 """Scheduled tasks for automatic data refresh and cleanup."""
 
 from datetime import datetime, timedelta, timezone
-from celery import chain
-from sqlalchemy import and_
+# from celery import chain
+# from sqlalchemy import and_
 
 from app.config import settings
 from app.database import SessionLocal
 from app.models import AggregationJob, JobStatus
 from workers.celery_app import celery_app
-from workers.tasks import run_aggregation_pipeline, FETCHER_MAP
+from workers.tasks import run_aggregation_pipeline
 
 
 @celery_app.task
