@@ -1,0 +1,133 @@
+name: CD
+
+on:
+  push:
+    branches: [main]
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+  ECR_BACKEND_REPOSITORY: data-aggregator-backend
+  ECR_FRONTEND_REPOSITORY: data-aggregator-frontend
+  ECS_CLUSTER: data-aggregator-cluster
+  ECS_BACKEND_SERVICE: data-aggregator-backend-service-f42h7aub
+  ECS_FRONTEND_SERVICE: data-aggregator-frontend-service-i8jp8n03
+  ECS_WORKER_SERVICE: data-aggregator-worker-service-595dml80
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push backend image
+        working-directory: backend
+        run: |
+          docker build -t ${{ env.ECR_BACKEND_REPOSITORY }}:${{ github.sha }} .
+          docker tag ${{ env.ECR_BACKEND_REPOSITORY }}:${{ github.sha }} ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_BACKEND_REPOSITORY }}:${{ github.sha }}
+          docker push ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_BACKEND_REPOSITORY }}:${{ github.sha }}
+
+      - name: Build, tag, and push frontend image
+        working-directory: frontend
+        run: |
+          docker build --build-arg VITE_API_URL=${{ secrets.VITE_API_URL }} -t ${{ env.ECR_FRONTEND_REPOSITORY }}:${{ github.sha }} .
+          docker tag ${{ env.ECR_FRONTEND_REPOSITORY }}:${{ github.sha }} ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_FRONTEND_REPOSITORY }}:${{ github.sha }}
+          docker push ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_FRONTEND_REPOSITORY }}:${{ github.sha }}
+
+      - name: Update backend task definition with new image
+        id: backend-task
+        run: |
+          TASK_DEF=$(aws ecs describe-task-definition --task-definition ${{ env.ECR_BACKEND_REPOSITORY }} --query 'taskDefinition' --output json)
+          NEW_CONTAINER_DEF=$(echo "$TASK_DEF" | jq --arg NEW_IMAGE "${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_BACKEND_REPOSITORY }}:${{ github.sha }}" '.containerDefinitions[0].image = $NEW_IMAGE | .containerDefinitions')
+          NEW_TASK_DEF_ARN=$(aws ecs register-task-definition \
+            --family ${{ env.ECR_BACKEND_REPOSITORY }} \
+            --container-definitions "$NEW_CONTAINER_DEF" \
+            --task-role-arn "$(echo $TASK_DEF | jq -r '.taskRoleArn')" \
+            --execution-role-arn "$(echo $TASK_DEF | jq -r '.executionRoleArn')" \
+            --network-mode "$(echo $TASK_DEF | jq -r '.networkMode')" \
+            --cpu "$(echo $TASK_DEF | jq -r '.cpu')" \
+            --memory "$(echo $TASK_DEF | jq -r '.memory')" \
+            --requires-compatibilities "$(echo $TASK_DEF | jq -r '.requiresCompatibilities[0]')" \
+            --query 'taskDefinition.taskDefinitionArn' --output text)
+          echo "NEW_TASK_DEF_ARN=$NEW_TASK_DEF_ARN" >> $GITHUB_OUTPUT
+
+      - name: Update frontend task definition with new image
+        id: frontend-task
+        run: |
+          TASK_DEF=$(aws ecs describe-task-definition --task-definition ${{ env.ECR_FRONTEND_REPOSITORY }} --query 'taskDefinition' --output json)
+          NEW_CONTAINER_DEF=$(echo "$TASK_DEF" | jq --arg NEW_IMAGE "${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_FRONTEND_REPOSITORY }}:${{ github.sha }}" '.containerDefinitions[0].image = $NEW_IMAGE | .containerDefinitions')
+          NEW_TASK_DEF_ARN=$(aws ecs register-task-definition \
+            --family ${{ env.ECR_FRONTEND_REPOSITORY }} \
+            --container-definitions "$NEW_CONTAINER_DEF" \
+            --task-role-arn "$(echo $TASK_DEF | jq -r '.taskRoleArn')" \
+            --execution-role-arn "$(echo $TASK_DEF | jq -r '.executionRoleArn')" \
+            --network-mode "$(echo $TASK_DEF | jq -r '.networkMode')" \
+            --cpu "$(echo $TASK_DEF | jq -r '.cpu')" \
+            --memory "$(echo $TASK_DEF | jq -r '.memory')" \
+            --requires-compatibilities "$(echo $TASK_DEF | jq -r '.requiresCompatibilities[0]')" \
+            --query 'taskDefinition.taskDefinitionArn' --output text)
+          echo "NEW_TASK_DEF_ARN=$NEW_TASK_DEF_ARN" >> $GITHUB_OUTPUT
+
+      - name: Update worker task definition with new image
+        id: worker-task
+        run: |
+          TASK_DEF=$(aws ecs describe-task-definition --task-definition ${{ env.ECS_WORKER_SERVICE }} --query 'taskDefinition' --output json)
+          NEW_CONTAINER_DEF=$(echo "$TASK_DEF" | jq --arg NEW_IMAGE "${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_BACKEND_REPOSITORY }}:${{ github.sha }}" '.containerDefinitions[0].image = $NEW_IMAGE | .containerDefinitions')
+          NEW_TASK_DEF_ARN=$(aws ecs register-task-definition \
+            --family ${{ env.ECS_WORKER_SERVICE }} \
+            --container-definitions "$NEW_CONTAINER_DEF" \
+            --task-role-arn "$(echo $TASK_DEF | jq -r '.taskRoleArn')" \
+            --execution-role-arn "$(echo $TASK_DEF | jq -r '.executionRoleArn')" \
+            --network-mode "$(echo $TASK_DEF | jq -r '.networkMode')" \
+            --cpu "$(echo $TASK_DEF | jq -r '.cpu')" \
+            --memory "$(echo $TASK_DEF | jq -r '.memory')" \
+            --requires-compatibilities "$(echo $TASK_DEF | jq -r '.requiresCompatibilities[0]')" \
+            --query 'taskDefinition.taskDefinitionArn' --output text)
+          echo "NEW_TASK_DEF_ARN=$NEW_TASK_DEF_ARN" >> $GITHUB_OUTPUT
+
+      - name: Run database migrations
+        run: |
+          aws ecs run-task \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --task-definition ${{ steps.backend-task.outputs.NEW_TASK_DEF_ARN }} \
+            --count 1 \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[${{ secrets.SUBNET_IDS }}],securityGroups=[${{ secrets.SECURITY_GROUP_IDS }}],assignPublicIp=DISABLED}" \
+            --overrides '{"containerOverrides":[{"name":"backend","command":["alembic","upgrade","head"]}]}' \
+            --started-by "CD-migration"
+
+      - name: Update backend servic
+        run: |
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ env.ECS_BACKEND_SERVICE }} \
+            --task-definition ${{ steps.backend-task.outputs.NEW_TASK_DEF_ARN }} \
+            --force-new-deployment
+
+      - name: Update frontend service
+        run: |
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ env.ECS_FRONTEND_SERVICE }} \
+            --task-definition ${{ steps.frontend-task.outputs.NEW_TASK_DEF_ARN }} \
+            --force-new-deployment
+
+      - name: Update worker service
+        run: |
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ env.ECS_WORKER_SERVICE }} \
+            --task-definition ${{ steps.worker-task.outputs.NEW_TASK_DEF_ARN }} \
+            --force-new-deployment
